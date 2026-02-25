@@ -164,6 +164,89 @@ describe("CMS test cases", () => {
     expect(unitsFor(distributions[0], "97110")).toBe(1);
     expect(unitsFor(distributions[0], "97116")).toBe(1);
   });
+
+  // Example 1
+  it("40 min of 97110 → 3 units for 97110", () => {
+    const { totalUnits, distributions } = calcTimed([{ code: "97110", minutes: 40 }]);
+    expect(totalUnits).toBe(3);
+    expect(distributions).toHaveLength(1);
+    expect(unitsFor(distributions[0], "97110")).toBe(3);
+  });
+
+  // Example 5
+  it("35 min 97112 + 25 min 97110 = 60 min → 4 units: 2×97112 + 2×97110", () => {
+    const { totalUnits, distributions } = calcTimed([
+      { code: "97112", minutes: 35 },
+      { code: "97110", minutes: 25 },
+    ]);
+    expect(totalUnits).toBe(4);
+    expect(distributions).toHaveLength(1);
+    expect(unitsFor(distributions[0], "97112")).toBe(2);
+    expect(unitsFor(distributions[0], "97110")).toBe(2);
+  });
+
+  // Example 6
+  it("25 min 97110 + 15 min 97140 = 40 min → 3 units, not 4 (overbilling check)", () => {
+    const { totalUnits, distributions } = calcTimed([
+      { code: "97110", minutes: 25 },
+      { code: "97140", minutes: 15 },
+    ]);
+    expect(totalUnits).toBe(3);
+    expect(distributions).toHaveLength(1);
+    expect(unitsFor(distributions[0], "97110")).toBe(2);
+    expect(unitsFor(distributions[0], "97140")).toBe(1);
+  });
+
+  // Example 10
+  it("23 min 97110 + 9 min 97140 + 8 min 97116 = 40 min → 3 units, tied 3rd unit (2 distributions)", () => {
+    const { totalUnits, distributions } = calcTimed([
+      { code: "97110", minutes: 23 },
+      { code: "97140", minutes: 9 },
+      { code: "97116", minutes: 8 },
+    ]);
+    expect(totalUnits).toBe(3);
+    expect(distributions).toHaveLength(2);
+    for (const dist of distributions) {
+      expect(unitsFor(dist, "97140")).toBe(1);
+      const sum = dist.reduce((s, d) => s + d.assignedUnits, 0);
+      expect(sum).toBe(3);
+    }
+    const combos = distributions.map((d) =>
+      `${unitsFor(d, "97110")}+${unitsFor(d, "97116")}`
+    );
+    expect(combos).toContain("2+0");
+    expect(combos).toContain("1+1");
+  });
+
+  // Example 11
+  it("22 min 97110 + 9 min 97140 + 8 min 97116 = 39 min → 3 units, no tie: 1×each", () => {
+    const { totalMinutes, totalUnits, distributions } = calcTimed([
+      { code: "97110", minutes: 22 },
+      { code: "97140", minutes: 9 },
+      { code: "97116", minutes: 8 },
+    ]);
+    expect(totalMinutes).toBe(39);
+    expect(totalUnits).toBe(3);
+    expect(distributions).toHaveLength(1);
+    expect(unitsFor(distributions[0], "97110")).toBe(1);
+    expect(unitsFor(distributions[0], "97140")).toBe(1);
+    expect(unitsFor(distributions[0], "97116")).toBe(1);
+  });
+
+  // Example 16
+  it("22 min 97110 + 10 min 97116 + 8 min 97140 = 40 min → 3 units: largest remainder wins, not total time", () => {
+    const { totalMinutes, totalUnits, distributions } = calcTimed([
+      { code: "97110", minutes: 22 },
+      { code: "97116", minutes: 10 },
+      { code: "97140", minutes: 8 },
+    ]);
+    expect(totalMinutes).toBe(40);
+    expect(totalUnits).toBe(3);
+    expect(distributions).toHaveLength(1);
+    expect(unitsFor(distributions[0], "97110")).toBe(1);
+    expect(unitsFor(distributions[0], "97116")).toBe(1);
+    expect(unitsFor(distributions[0], "97140")).toBe(1);
+  });
 });
 
 describe("untimed units", () => {
@@ -177,5 +260,49 @@ describe("untimed units", () => {
     ]);
     const untimedUnits = 1; // 97014
     expect(totalUnits + untimedUnits).toBe(5);
+  });
+
+  // Example 13
+  it("25 min 97110 + 15 min 97140 + 20 min 97112 = 60 min timed → 4 timed units: 2×97110 + 1×97140 + 1×97112", () => {
+    const { totalUnits, distributions } = calcTimed([
+      { code: "97110", minutes: 25 },
+      { code: "97140", minutes: 15 },
+      { code: "97112", minutes: 20 },
+    ]);
+    const untimedUnits = 1; // 97014
+    expect(totalUnits).toBe(4);
+    expect(totalUnits + untimedUnits).toBe(5);
+    expect(distributions).toHaveLength(1);
+    expect(unitsFor(distributions[0], "97110")).toBe(2);
+    expect(unitsFor(distributions[0], "97140")).toBe(1);
+    expect(unitsFor(distributions[0], "97112")).toBe(1);
+  });
+
+  // Example 14
+  it("25 min 97110 timed → 2 timed units (untimed minutes must never be added to timed total)", () => {
+    const { totalUnits, distributions } = calcTimed([
+      { code: "97110", minutes: 25 },
+    ]);
+    expect(totalUnits).toBe(2);
+    expect(distributions).toHaveLength(1);
+    expect(unitsFor(distributions[0], "97110")).toBe(2);
+  });
+
+  // Example 15
+  it("20 min 97110 + 18 min 97112 + 12 min 97140 + 10 min 97530 = 60 min timed → 4 timed units: 1×each", () => {
+    const { totalUnits, distributions } = calcTimed([
+      { code: "97110", minutes: 20 },
+      { code: "97112", minutes: 18 },
+      { code: "97140", minutes: 12 },
+      { code: "97530", minutes: 10 },
+    ]);
+    const untimedUnits = 1; // 97014
+    expect(totalUnits).toBe(4);
+    expect(totalUnits + untimedUnits).toBe(5);
+    expect(distributions).toHaveLength(1);
+    expect(unitsFor(distributions[0], "97110")).toBe(1);
+    expect(unitsFor(distributions[0], "97112")).toBe(1);
+    expect(unitsFor(distributions[0], "97140")).toBe(1);
+    expect(unitsFor(distributions[0], "97530")).toBe(1);
   });
 });
