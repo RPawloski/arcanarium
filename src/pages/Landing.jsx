@@ -12,6 +12,16 @@ const APPS = [
     accentDim: 'rgba(56,189,248,0.08)',
     accentBorder: 'rgba(56,189,248,0.2)',
   },
+  {
+    id: 'notes',
+    name: 'Note Templates',
+    glyph: '≡',
+    description: 'PT documentation templates, one click to clipboard',
+    path: '/notes',
+    accent: '#a78bfa',
+    accentDim: 'rgba(167,139,250,0.08)',
+    accentBorder: 'rgba(167,139,250,0.2)',
+  },
 ]
 
 function ParticleCanvas() {
