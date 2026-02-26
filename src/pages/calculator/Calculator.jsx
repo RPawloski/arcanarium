@@ -245,6 +245,10 @@ export default function Medicare8MinuteCalculator() {
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .card { animation: fadeIn 0.3s ease-out; }
         .result-badge { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @media (max-width: 520px) {
+          .service-row { flex-wrap: wrap; }
+          .service-row select { width: 100%; flex: 1 1 100%; }
+        }
       `}</style>
 
       {/* Header */}
@@ -279,7 +283,7 @@ export default function Medicare8MinuteCalculator() {
           </div>
 
           {timedServices.map((service) => (
-            <div key={service.id} className="card" style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px" }}>
+            <div key={service.id} className="card service-row" style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px" }}>
               <select
                 value={service.code}
                 onChange={(e) => updateTimed(service.id, "code", e.target.value)}
@@ -326,7 +330,7 @@ export default function Medicare8MinuteCalculator() {
             <p style={{ fontSize: 13, color: "#334155", margin: "8px 0 0", fontStyle: "italic" }}>No untimed services added.</p>
           )}
           {untimedServices.map((service) => (
-            <div key={service.id} className="card" style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px" }}>
+            <div key={service.id} className="card service-row" style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px" }}>
               <select
                 value={service.code}
                 onChange={(e) => updateUntimed(service.id, "code", e.target.value)}
