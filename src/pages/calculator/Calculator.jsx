@@ -27,6 +27,9 @@ const TIMED_CODES = [
 ];
 
 const UNTIMED_CODES = [
+  { code: "97161", name: "PT Evaluation: Low Complexity" },
+  { code: "97162", name: "PT Evaluation: Moderate Complexity" },
+  { code: "97163", name: "PT Evaluation: High Complexity" },
   { code: "97014", name: "Electrical Stimulation (Unattended)" },
   { code: "97010", name: "Hot/Cold Packs" },
   { code: "97012", name: "Mechanical Traction" },
