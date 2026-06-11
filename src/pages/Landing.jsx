@@ -27,7 +27,8 @@ const APPS = [
     name: 'Solar System Explorer',
     glyph: '✦',
     description: 'Interactive 3D solar system — drag to spin, tap to explore',
-    path: '/space',
+    path: '/space/index.html',
+    external: true,
     accent: '#fbbf24',
     accentDim: 'rgba(251,191,36,0.08)',
     accentBorder: 'rgba(251,191,36,0.2)',
@@ -193,9 +194,10 @@ export default function Landing() {
           width: '100%',
           animation: 'fadeIn 0.7s 0.35s ease-out both',
         }}>
-          {APPS.map((app) => (
-            <Link to={app.path} key={app.id}>
+          {APPS.map((app) => {
+            const card = (
               <div
+                key={app.id}
                 className="app-card"
                 style={{
                   width: 220,
@@ -221,8 +223,11 @@ export default function Landing() {
                   Open →
                 </div>
               </div>
-            </Link>
-          ))}
+            )
+            return app.external
+              ? <a key={app.id} href={app.path}>{card}</a>
+              : <Link key={app.id} to={app.path}>{card}</Link>
+          })}
 
           {/* Placeholder */}
           <div style={{
