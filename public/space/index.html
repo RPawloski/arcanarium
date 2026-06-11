@@ -109,7 +109,7 @@ var canvas=document.getElementById("space");
 var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 var W=window.innerWidth,H=window.innerHeight;
-renderer.setSize(W,H,false);
+renderer.setSize(W,H);
 renderer.setClearColor(0x070A14,1);
 var scene=new THREE.Scene();
 var camera=new THREE.PerspectiveCamera(50,W/H,0.1,2000);
@@ -270,7 +270,7 @@ document.getElementById("spd").oninput=function(){spMult=parseFloat(this.value);
 window.addEventListener("resize",function(){
   W=window.innerWidth;H=window.innerHeight;
   camera.aspect=W/H;camera.updateProjectionMatrix();
-  renderer.setSize(W,H,false);
+  renderer.setSize(W,H);
   fullView=(W/H<1)?340:240;
   if(!selected)goalRadius=fullView;
 });
