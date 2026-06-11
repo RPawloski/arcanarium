@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>Solar System Explorer</title>
+<meta name="description" content="An interactive 3D solar system for young explorers. Tap a planet to visit it and learn fun facts!" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Nunito:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --space:#070A14; --panel:rgba(13,18,38,0.88); --panel-border:rgba(150,170,220,0.25);
+    --ink:#F2F4FB; --ink-soft:#ADB6D6; --sun:#FAC775; --accent:#7FB4F0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%; overflow:hidden; background:var(--space); color:var(--ink);
+    font-family:'Nunito',system-ui,sans-serif; font-size:17px;}
+  canvas#space{position:fixed; inset:0; display:block; touch-action:none; cursor:grab;}
+  header{position:fixed; top:0; left:0; right:0; padding:14px 18px; pointer-events:none;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px; z-index:5;}
+  h1{font-family:'Fredoka',sans-serif; font-weight:600; font-size:clamp(20px,4vw,30px); margin:0; letter-spacing:0.3px;}
+  .sub{color:var(--ink-soft); font-size:14px; margin:2px 0 0;}
+  .ctrls{display:flex; align-items:center; gap:8px; pointer-events:auto;}
+  button{font-family:'Nunito',sans-serif; font-weight:700; font-size:15px; color:var(--ink);
+    background:var(--panel); border:1.5px solid var(--panel-border); border-radius:14px;
+    padding:10px 14px; cursor:pointer; transition:transform 0.08s, border-color 0.15s;}
+  button:hover{border-color:var(--accent);}
+  button:active{transform:scale(0.96);}
+  button:focus-visible{outline:3px solid var(--accent); outline-offset:2px;}
+  .speed{display:flex; align-items:center; gap:8px; background:var(--panel); border:1.5px solid var(--panel-border);
+    border-radius:14px; padding:8px 14px; color:var(--ink-soft); font-size:14px;}
+  input[type=range]{accent-color:var(--sun); width:90px;}
+  footer{position:fixed; left:0; right:0; bottom:0; padding:10px 12px 14px; z-index:5;
+    display:flex; flex-direction:column; gap:10px; pointer-events:none;}
+  #card{pointer-events:auto; max-width:560px; background:var(--panel); border:1.5px solid var(--panel-border);
+    border-radius:18px; padding:16px 20px; backdrop-filter:blur(6px);}
+  #cardTitle{font-family:'Fredoka',sans-serif; font-weight:600; font-size:24px; display:flex; align-items:center; gap:10px; margin:0 0 6px;}
+  .dot{width:16px; height:16px; border-radius:50%; flex:none;}
+  .fact{display:flex; gap:9px; align-items:flex-start; margin:6px 0; line-height:1.5;}
+  .fact span:first-child{flex:none;}
+  #moonRow{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; align-items:center;}
+  #moonRow .lbl{font-size:14px; color:var(--ink-soft);}
+  .mchip{padding:8px 14px; border-radius:999px; font-size:14px;}
+  .mchip.sel{border-color:var(--sun); border-width:2px;}
+  #btnRow{pointer-events:auto; display:flex; gap:8px; overflow-x:auto; padding:4px 2px 6px;
+    scrollbar-width:thin;}
+  .pbtn{display:flex; align-items:center; gap:9px; padding:12px 16px; border-radius:999px;
+    font-size:16px; flex:none; min-height:48px;}
+  .pbtn.sel{border-color:var(--sun); border-width:2.5px; background:rgba(250,199,117,0.12);}
+  .hint{position:fixed; left:50%; transform:translateX(-50%); bottom:36vh; z-index:4; pointer-events:none;
+    color:var(--ink-soft); font-size:14px; background:var(--panel); border-radius:999px; padding:8px 16px;
+    border:1.5px solid var(--panel-border); transition:opacity 0.6s;}
+  @media (max-width:560px){
+    .speed{display:none;}
+    #cardTitle{font-size:20px;}
+    body{font-size:15.5px;}
+  }
+</style>
+</head>
+<body>
+<canvas id="space" aria-label="3D model of the solar system. Drag to spin. Use the planet buttons below to explore."></canvas>
+
+<header>
+  <div>
+    <h1>Solar System Explorer 🚀</h1>
+    <p class="sub">Drag to spin · tap a planet to visit it</p>
+  </div>
+  <div class="ctrls">
+    <button id="pauseBtn" aria-label="Pause or play the orbits">⏸ Pause</button>
+    <button id="resetBtn">↩ See everything</button>
+    <label class="speed">Speed <input type="range" id="spd" min="0" max="3" step="0.1" value="1" aria-label="Orbit speed" /></label>
+  </div>
+</header>
+
+<div class="hint" id="hint">👆 Tap any planet to learn about it!</div>
+
+<footer>
+  <div id="card" hidden>
+    <p id="cardTitle"><span class="dot" id="cardDot"></span><span id="cardName"></span></p>
+    <div id="cardFacts"></div>
+    <div id="moonRow"></div>
+  </div>
+  <div id="btnRow" role="toolbar" aria-label="Choose a planet"></div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+var DATA=[
+{id:"sun",name:"The Sun",emoji:"☀️",type:"star",size:14,color:0xF6B93B,ui:"#FAC775",facts:["The Sun is a star — a giant ball of super hot glowing gas!","It is so big that one million Earths could fit inside it.","Never look right at the Sun — it is too bright for your eyes!"]},
+{id:"mercury",name:"Mercury",emoji:"🪨",dist:30,size:2,speed:1.6,color:0xB8A89A,ui:"#C9BEB2",facts:["Mercury is the smallest planet and the closest to the Sun.","It zooms around the Sun faster than any other planet!","It has no air and is covered in craters, just like our Moon."]},
+{id:"venus",name:"Venus",emoji:"🌕",dist:40,size:3.4,speed:1.17,color:0xE3B561,ui:"#EFC36A",facts:["Venus is the hottest planet — hotter than an oven!","Thick yellow clouds cover the whole planet.","Venus spins backwards compared to Earth!"]},
+{id:"earth",name:"Earth",emoji:"🌍",dist:52,size:3.6,speed:1,color:0x3D86D6,ui:"#5A9CE6",facts:["Earth is our home! It is the only planet we know with animals, plants, and people.","Most of Earth is covered by big blue oceans.","You can see Earth's moon at night — sometimes round, sometimes like a banana!"],moons:[
+ {id:"moon",name:"The Moon",emoji:"🌙",dist:7,size:1.1,speed:3,color:0xC9C5BD,ui:"#D3D1C7",facts:["Astronauts flew rockets to the Moon and walked on it!","Look closely at night — its craters make a friendly face!"]}]},
+{id:"mars",name:"Mars",emoji:"🔴",dist:64,size:2.8,speed:0.8,color:0xCC5A33,ui:"#E06A40",facts:["Mars is called the red planet because its dirt is rusty red.","It has the biggest volcano in the whole solar system!","Robot rovers are driving around on Mars right now!"]},
+{id:"jupiter",name:"Jupiter",emoji:"🟠",dist:86,size:9,speed:0.44,color:0xD9A066,ui:"#E2AC76",facts:["Jupiter is the biggest planet — more than 1,000 Earths could fit inside!","Its big red spot is a giant storm bigger than the whole Earth.","Jupiter has more than 90 moons!"],moons:[
+ {id:"io",name:"Io",emoji:"🌋",dist:12,size:0.9,speed:3.4,color:0xE0C25A,ui:"#E8CC6E",facts:["Io is covered in hundreds of volcanoes — they erupt all the time!"]},
+ {id:"europa",name:"Europa",emoji:"🧊",dist:15,size:0.85,speed:2.7,color:0xD8D2C8,ui:"#DEDAD2",facts:["Europa is icy — there might be a hidden ocean under the ice!"]},
+ {id:"ganymede",name:"Ganymede",emoji:"🌑",dist:18,size:1.3,speed:2.1,color:0xA89B8C,ui:"#B3A99C",facts:["Ganymede is the biggest moon in the whole solar system — bigger than Mercury!"]},
+ {id:"callisto",name:"Callisto",emoji:"🌑",dist:21.5,size:1.2,speed:1.6,color:0x8D837A,ui:"#9C948C",facts:["Callisto has more craters than almost anywhere else!"]}]},
+{id:"saturn",name:"Saturn",emoji:"🪐",dist:110,size:8,speed:0.32,color:0xE3CF9E,ui:"#E9D7AC",facts:["Saturn has beautiful rings made of ice and rocks.","It is so light it could float in a giant bathtub!","Saturn has more than 140 moons!"],moons:[
+ {id:"titan",name:"Titan",emoji:"🟤",dist:16,size:1.3,speed:2,color:0xD89E4A,ui:"#E0AB5C",facts:["Titan has thick orange clouds and lakes — but its lakes are not made of water!"]}]},
+{id:"uranus",name:"Uranus",emoji:"🔵",dist:130,size:5.5,speed:0.23,color:0x9BD4D6,ui:"#A8DDDF",facts:["Uranus rolls around the Sun on its side, like a rolling ball!","It looks blue-green because of a special gas in its air.","Scientists think its air might smell like rotten eggs — yuck!"]},
+{id:"neptune",name:"Neptune",emoji:"🔷",dist:148,size:5.3,speed:0.18,color:0x4666D1,ui:"#6B86DE",facts:["Neptune is the windiest planet — its storms blow super fast!","It is so far away that one year there lasts 165 Earth years.","Neptune is deep blue, like the ocean."]},
+{id:"pluto",name:"Pluto",emoji:"💜",dist:164,size:1.6,speed:0.14,color:0xCBB8A8,ui:"#D6C6B8",facts:["Pluto is a tiny dwarf planet — even smaller than our Moon!","From Pluto, the Sun looks like a very bright star.","Pluto has a giant heart shape on it!"]}];
+
+var canvas=document.getElementById("space");
+var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+var W=window.innerWidth,H=window.innerHeight;
+renderer.setSize(W,H,false);
+renderer.setClearColor(0x070A14,1);
+var scene=new THREE.Scene();
+var camera=new THREE.PerspectiveCamera(50,W/H,0.1,2000);
+scene.add(new THREE.AmbientLight(0xffffff,0.35));
+scene.add(new THREE.PointLight(0xfff2cc,1.4,0,2));
+
+var starGeo=new THREE.BufferGeometry(),sp=[];
+for(var i=0;i<1400;i++){var r=500+Math.random()*350,t=Math.random()*Math.PI*2,p=Math.acos(2*Math.random()-1);
+sp.push(r*Math.sin(p)*Math.cos(t),r*Math.cos(p),r*Math.sin(p)*Math.sin(t));}
+starGeo.setAttribute("position",new THREE.Float32BufferAttribute(sp,3));
+scene.add(new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xBFC6D4,size:1.5,sizeAttenuation:false})));
+
+var registry={},clickables=[];
+function hitSphere(size,id){
+  var m=new THREE.Mesh(new THREE.SphereGeometry(Math.max(size*1.8,3.2),8,8),
+    new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+  m.userData.bodyId=id;clickables.push(m);return m;
+}
+
+DATA.forEach(function(b){
+  if(b.type==="star"){
+    var sun=new THREE.Mesh(new THREE.SphereGeometry(b.size,40,40),new THREE.MeshBasicMaterial({color:b.color}));
+    var glow=new THREE.Mesh(new THREE.SphereGeometry(b.size*1.25,32,32),
+      new THREE.MeshBasicMaterial({color:0xF6B93B,transparent:true,opacity:0.18}));
+    sun.add(glow);sun.add(hitSphere(b.size,b.id));scene.add(sun);
+    registry[b.id]={mesh:sun,data:b,angle:0};return;
+  }
+  var ring=new THREE.Mesh(new THREE.RingGeometry(b.dist-0.12,b.dist+0.12,128),
+    new THREE.MeshBasicMaterial({color:0x39414F,side:THREE.DoubleSide,transparent:true,opacity:0.7}));
+  ring.rotation.x=-Math.PI/2;scene.add(ring);
+  var mesh=new THREE.Mesh(new THREE.SphereGeometry(b.size,32,32),new THREE.MeshLambertMaterial({color:b.color}));
+  mesh.add(hitSphere(b.size,b.id));scene.add(mesh);
+  if(b.id==="saturn"){
+    var sr=new THREE.Mesh(new THREE.RingGeometry(b.size*1.35,b.size*2.1,64),
+      new THREE.MeshBasicMaterial({color:0xCDB98A,side:THREE.DoubleSide,transparent:true,opacity:0.75}));
+    sr.rotation.x=-Math.PI/2.4;mesh.add(sr);
+  }
+  if(b.id==="uranus"){mesh.rotation.z=Math.PI/2.2;}
+  registry[b.id]={mesh:mesh,data:b,angle:Math.random()*Math.PI*2};
+  (b.moons||[]).forEach(function(m){
+    var mm=new THREE.Mesh(new THREE.SphereGeometry(m.size,20,20),new THREE.MeshLambertMaterial({color:m.color}));
+    mm.add(hitSphere(m.size,m.id));scene.add(mm);
+    registry[m.id]={mesh:mm,data:m,angle:Math.random()*Math.PI*2,parent:b.id};
+  });
+});
+
+var target=new THREE.Vector3(),smoothTarget=new THREE.Vector3();
+var theta=0.6,phi=1.05;
+var fullView=(W/H<1)?340:240;
+var radius=fullView,goalRadius=fullView;
+var selected=null,spMult=1;
+var reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+var running=!reduceMotion;
+var halo=new THREE.Mesh(new THREE.SphereGeometry(1,24,24),
+  new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.18}));
+halo.visible=false;scene.add(halo);
+
+var hint=document.getElementById("hint");
+
+function setCard(id){
+  var e=registry[id],d=e.data;
+  document.getElementById("card").hidden=false;
+  document.getElementById("cardDot").style.background=d.ui;
+  document.getElementById("cardName").textContent=d.emoji+" "+d.name;
+  var fl=document.getElementById("cardFacts");fl.innerHTML="";
+  d.facts.forEach(function(f){
+    var row=document.createElement("div");row.className="fact";
+    var star=document.createElement("span");star.textContent="⭐";
+    var txt=document.createElement("span");txt.textContent=f;
+    row.appendChild(star);row.appendChild(txt);fl.appendChild(row);
+  });
+  var mr=document.getElementById("moonRow");mr.innerHTML="";
+  var owner=e.parent?registry[e.parent].data:d;
+  if(owner.moons&&owner.moons.length){
+    var lbl=document.createElement("span");lbl.className="lbl";
+    lbl.textContent=(e.parent?owner.name+"'s moons:":"Visit a moon:");mr.appendChild(lbl);
+    owner.moons.forEach(function(m){
+      var c=document.createElement("button");c.className="mchip"+(selected===m.id?" sel":"");
+      c.textContent=m.emoji+" "+m.name;
+      c.onclick=function(){select(m.id);};mr.appendChild(c);
+    });
+    if(e.parent){
+      var back=document.createElement("button");back.className="mchip";
+      back.textContent="↩ Back to "+owner.name;
+      back.onclick=function(){select(owner.id);};mr.appendChild(back);
+    }
+  }
+}
+
+function select(id){
+  selected=id;var e=registry[id];
+  goalRadius=Math.max(e.data.size*7,e.data.size+18);
+  if(id==="sun")goalRadius=70;
+  halo.visible=true;halo.scale.setScalar(e.data.size*1.3);
+  hint.style.opacity=0;
+  setCard(id);buildButtons();
+}
+function resetView(){
+  selected=null;goalRadius=fullView;halo.visible=false;
+  document.getElementById("card").hidden=true;
+  buildButtons();
+}
+
+function buildButtons(){
+  var row=document.getElementById("btnRow");row.innerHTML="";
+  DATA.forEach(function(b){
+    var btn=document.createElement("button");btn.className="pbtn"+(selected===b.id?" sel":"");
+    var dot=document.createElement("span");dot.className="dot";dot.style.background=b.ui;
+    btn.appendChild(dot);btn.appendChild(document.createTextNode(b.name.replace("The ","")));
+    btn.onclick=function(){select(b.id);};row.appendChild(btn);
+  });
+}
+buildButtons();
+
+var dragging=false,moved=0,px=0,py=0;
+canvas.addEventListener("pointerdown",function(e){
+  dragging=true;moved=0;px=e.clientX;py=e.clientY;
+  canvas.setPointerCapture(e.pointerId);canvas.style.cursor="grabbing";
+});
+canvas.addEventListener("pointermove",function(e){
+  if(!dragging)return;
+  var dx=e.clientX-px,dy=e.clientY-py;
+  moved+=Math.abs(dx)+Math.abs(dy);px=e.clientX;py=e.clientY;
+  theta-=dx*0.006;phi=Math.min(Math.max(phi-dy*0.006,0.25),1.45);
+});
+canvas.addEventListener("pointerup",function(e){
+  dragging=false;canvas.style.cursor="grab";
+  if(moved<6){
+    var v=new THREE.Vector2((e.clientX/W)*2-1,-(e.clientY/H)*2+1);
+    var ray=new THREE.Raycaster();ray.setFromCamera(v,camera);
+    var hits=ray.intersectObjects(clickables,false);
+    if(hits.length)select(hits[0].object.userData.bodyId);
+  }
+});
+canvas.addEventListener("wheel",function(e){
+  e.preventDefault();
+  goalRadius=Math.min(Math.max(goalRadius+e.deltaY*0.2,14),440);
+},{passive:false});
+
+var pinchDist=0;
+canvas.addEventListener("touchmove",function(e){
+  if(e.touches.length===2){
+    e.preventDefault();
+    var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    if(pinchDist)goalRadius=Math.min(Math.max(goalRadius+(pinchDist-d)*0.5,14),440);
+    pinchDist=d;
+  }
+},{passive:false});
+canvas.addEventListener("touchend",function(){pinchDist=0;});
+
+var pauseBtn=document.getElementById("pauseBtn");
+function paintPause(){pauseBtn.textContent=running?"⏸ Pause":"▶ Play";}
+pauseBtn.onclick=function(){running=!running;paintPause();};
+paintPause();
+document.getElementById("resetBtn").onclick=resetView;
+document.getElementById("spd").oninput=function(){spMult=parseFloat(this.value);};
+
+window.addEventListener("resize",function(){
+  W=window.innerWidth;H=window.innerHeight;
+  camera.aspect=W/H;camera.updateProjectionMatrix();
+  renderer.setSize(W,H,false);
+  fullView=(W/H<1)?340:240;
+  if(!selected)goalRadius=fullView;
+});
+
+var clock=new THREE.Clock();
+function tick(){
+  requestAnimationFrame(tick);
+  var dt=clock.getDelta();
+  Object.keys(registry).forEach(function(id){
+    var e=registry[id],d=e.data;
+    if(d.type==="star"){e.mesh.rotation.y+=dt*0.05;return;}
+    if(running)e.angle+=d.speed*spMult*dt*0.25;
+    var cx=0,cz=0;
+    if(e.parent){var pp=registry[e.parent].mesh.position;cx=pp.x;cz=pp.z;}
+    e.mesh.position.set(cx+Math.cos(e.angle)*d.dist,0,cz+Math.sin(e.angle)*d.dist);
+    e.mesh.rotation.y+=dt*0.4;
+  });
+  if(selected){
+    var sm=registry[selected].mesh;
+    target.copy(sm.position);halo.position.copy(sm.position);
+  } else target.set(0,0,0);
+  smoothTarget.lerp(target,0.08);
+  radius+=(goalRadius-radius)*0.06;
+  camera.position.set(
+    smoothTarget.x+radius*Math.sin(phi)*Math.cos(theta),
+    smoothTarget.y+radius*Math.cos(phi),
+    smoothTarget.z+radius*Math.sin(phi)*Math.sin(theta));
+  camera.lookAt(smoothTarget);
+  renderer.render(scene,camera);
+}
+tick();
+})();
+</script>
+</body>
+</html>

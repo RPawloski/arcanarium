@@ -22,6 +22,16 @@ const APPS = [
     accentDim: 'rgba(167,139,250,0.08)',
     accentBorder: 'rgba(167,139,250,0.2)',
   },
+  {
+    id: 'space',
+    name: 'Solar System Explorer',
+    glyph: '✦',
+    description: 'Interactive 3D solar system — drag to spin, tap to explore',
+    path: '/space',
+    accent: '#fbbf24',
+    accentDim: 'rgba(251,191,36,0.08)',
+    accentBorder: 'rgba(251,191,36,0.2)',
+  },
 ]
 
 function ParticleCanvas() {

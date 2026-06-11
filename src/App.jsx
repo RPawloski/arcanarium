@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Landing from './pages/Landing'
 import Calculator from './pages/calculator/Calculator'
 import Notes from './pages/notes/Notes'
+import Space from './pages/space/Space'
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/calculator" element={<Calculator />} />
         <Route path="/notes" element={<Notes />} />
+        <Route path="/space" element={<Space />} />
       </Routes>
     </BrowserRouter>
   )
